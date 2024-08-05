@@ -5,7 +5,7 @@ import './universal_api/api_caller.dart';
 
 class MpesaFlutterPlugin {
   static bool _consumerKeySet = false;
-   static late String _mConsumerKeyVariable;
+  static late String _mConsumerKeyVariable;
 
   static setConsumerKey(String consumerKey) {
     ///Value of Consumer Key MUST be set before the party starts.
@@ -25,7 +25,6 @@ class MpesaFlutterPlugin {
 
   static Future<dynamic> initializeMpesaSTKPush(
       {
-
       ///BusinessShortCode is the org paybill
       ///Which is same as PartyB
       ///Phone Number should be a registered MPESA number
@@ -66,20 +65,21 @@ class MpesaFlutterPlugin {
             consumerKey: _mConsumerKeyVariable,
             consumerSecret: _mConsumerSecretVariable,
             baseUrl: baseUri.host)
-        .mSTKRequest(
-            mAccountReference: accountReference,
-            mAmount: amount,
-            mBusinessShortCode: businessShortCode,
-            mCallBackURL: callBackURL,
-            mPhoneNumber: phoneNumber,
-            mTimeStamp: actualTimeStamp,
-            mTransactionDesc: transactionDesc,
-            nPassKey: passKey,
-            partyA: partyA,
-            partyB: partyB,
-            mTransactionType:
-                transactionType == TransactionType.CustomerPayBillOnline
-                    ? "CustomerPayBillOnline"
-                    : "CustomerBuyGoodsOnline");
+        .setAccessToken();
+    // .mSTKRequest(
+    //     mAccountReference: accountReference,
+    //     mAmount: amount,
+    //     mBusinessShortCode: businessShortCode,
+    //     mCallBackURL: callBackURL,
+    //     mPhoneNumber: phoneNumber,
+    //     mTimeStamp: actualTimeStamp,
+    //     mTransactionDesc: transactionDesc,
+    //     nPassKey: passKey,
+    //     partyA: partyA,
+    //     partyB: partyB,
+    //     mTransactionType:
+    //         transactionType == TransactionType.CustomerPayBillOnline
+    //             ? "CustomerPayBillOnline"
+    //             : "CustomerBuyGoodsOnline");
   }
 }

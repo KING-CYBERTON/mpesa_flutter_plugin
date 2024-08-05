@@ -1,6 +1,5 @@
-import 'dart:io';
-import 'dart:async';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 //taken from https://github.com/komuw/zakah
 
@@ -16,7 +15,10 @@ class RequestHandler {
 
   ///For instantiation, create the key secret on the fly with received values.
 
-  RequestHandler({required this.consumerKey, required this.consumerSecret, required this.baseUrl})
+  RequestHandler(
+      {required this.consumerKey,
+      required this.consumerSecret,
+      required this.baseUrl})
       : b64keySecret =
             base64Url.encode((consumerKey + ":" + consumerSecret).codeUnits);
 
@@ -32,7 +34,9 @@ class RequestHandler {
   }
 
   String generatePassword(
-      {required String mPassKey, required String mShortCode, required String actualTimeStamp}) {
+      {required String mPassKey,
+      required String mShortCode,
+      required String actualTimeStamp}) {
     ///Adds up the paybill no., the timestamp & passkey to generate a base64
     ///code to be added to the request body as unique password to auth
     ///the request in question.
@@ -55,28 +59,22 @@ class RequestHandler {
       }
     }
 
-    // todo: handle exceptions
-    HttpClient client = new HttpClient();
-    HttpClientRequest req = await client.getUrl(getAuthUrl());
-    req.headers.add("Accept", "application/json");
-    req.headers.add("Authorization", "Basic " + b64keySecret);
-    HttpClientResponse res = await req.close();
-
-    // u should use `await res.drain()` if u aren't reading the body
-    await res.transform(utf8.decoder).forEach((bodyString) {
-      dynamic jsondecodeBody = jsonDecode(bodyString);
-      mAccessToken = jsondecodeBody["access_token"].toString();
-      mAccessExpiresAt = now.add(new Duration(
-          seconds: int.parse(jsondecodeBody["expires_in"].toString())));
+    final response = await http.get(getAuthUrl(), headers: {
+      "Accept": "application/json",
+      "Authorization": "Basic ${b64keySecret}",
     });
+
+    // if (response.statusCode == 200) {
+    //   dynamic jsondecodeBody = jsonDecode(response.body);
+    //   mAccessToken = jsondecodeBody["ac cess_token"].toString();
+    //   mAccessExpiresAt = now.add(new Duration(
+    //     seconds: int.parse(jsondecodeBody["expires_in"].toString())));
+    // } else {
+    //   throw Exception('Failed to fetch access token');
+    // }
   }
 
   Uri generateSTKPushUrl() {
-    ///Nothing much, merges the uri parts to produce one uri  that would be used
-    ///to process the actual request.
-    ///Note that baseUrl is now instantiated with the call, instead of sending
-    ///it as a param with the body, this made it easier to use in generating auth
-    ///token before placing the request.
     Uri uri = new Uri(
         scheme: 'https',
         host: baseUrl,
@@ -84,74 +82,57 @@ class RequestHandler {
     return uri;
   }
 
-  Future<Map<String, String>> mSTKRequest(
-      {required String mBusinessShortCode,
-      required String nPassKey,
-        required String mTransactionType,
-        required String mTimeStamp,
-        required double mAmount,
-        required String partyA,
-        required String partyB,
-        required String mPhoneNumber,
-        required Uri mCallBackURL,
-        required String mAccountReference,
-        String? mTransactionDesc}) async {
-    ///set access token before starting the party.
-    await setAccessToken();
+  // Future<Map<String, String>> mSTKRequest({
+  //   required String mBusinessShortCode,
+  //   required String nPassKey,
+  //   required String mTransactionType,
+  //   required String mTimeStamp,
+  //   required double mAmount,
+  //   required String partyA,
+  //   required String partyB,
+  //   required String mPhoneNumber,
+  //   required Uri mCallBackURL,
+  //   required String mAccountReference,
+  //   String? mTransactionDesc
+  // }) async {
+  //   await setAccessToken();
 
-    ///create the payload that should not be changed until the request is done.
-    final stkPushPayload = {
-      "BusinessShortCode": mBusinessShortCode,
-      "Password": generatePassword(
-          mShortCode: mBusinessShortCode,
-          mPassKey: nPassKey,
-          actualTimeStamp: mTimeStamp),
-      "Timestamp": mTimeStamp,
-      "Amount": mAmount,
-      "PartyA": partyA,
-      "PartyB": partyB,
-      "PhoneNumber": mPhoneNumber,
-      "CallBackURL": mCallBackURL.toString(),
-      "AccountReference": mAccountReference,
-      "TransactionDesc": mTransactionDesc == null? "" : mTransactionDesc,
-      "TransactionType": mTransactionType
-    };
-    final Map<String, String> result = new Map<String, String>();
+  //   final stkPushPayload = {
+  //     "BusinessShortCode": mBusinessShortCode,
+  //     "Password": generatePassword(
+  //         mShortCode: mBusinessShortCode, mPassKey: nPassKey, actualTimeStamp: mTimeStamp),
+  //     "Timestamp": mTimeStamp,
+  //     "Amount": mAmount,
+  //     "PartyA": partyA,
+  //     "PartyB": partyB,
+  //     "PhoneNumber": mPhoneNumber,
+  //     "CallBackURL": mCallBackURL.toString(),
+  //     "AccountReference": mAccountReference,
+  //     "TransactionDesc": mTransactionDesc ?? "",
+  //     "TransactionType": mTransactionType
+  //   };
+  //   final Map<String, String> result = {};
 
-    ///Actual request starts here.
-    HttpClient client = new HttpClient();
-    return await client.postUrl(generateSTKPushUrl()).then((req) async {
-      req.headers.add("Content-Type", "application/json");
-      req.headers.add("Authorization", "Bearer " + mAccessToken);
-      req.write(jsonEncode(stkPushPayload)); // write is non-blocking
-      HttpClientResponse res = await req.close();
+  //   final response = await http.post(generateSTKPushUrl(),
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         "Authorization": "Bearer $mAccessToken"
+  //       },
+  //       body: jsonEncode(stkPushPayload));
 
-      await res.transform(utf8.decoder).forEach((bodyString) {
-        dynamic mJsonDecodeBody = jsonDecode(bodyString);
+  //   dynamic mJsonDecodeBody = jsonDecode(response.body);
+  //   if (response.statusCode == 200) {
+  //     result["MerchantRequestID"] = mJsonDecodeBody["MerchantRequestID"].toString();
+  //     result["CheckoutRequestID"] = mJsonDecodeBody["CheckoutRequestID"].toString();
+  //     result["ResponseCode"] = mJsonDecodeBody["ResponseCode"].toString();
+  //     result["ResponseDescription"] = mJsonDecodeBody["ResponseDescription"].toString();
+  //     result["CustomerMessage"] = mJsonDecodeBody["CustomerMessage"].toString();
+  //   } else {
+  //     result["requestId"] = mJsonDecodeBody["requestId"].toString();
+  //     result["errorCode"] = mJsonDecodeBody["errorCode"].toString();
+  //     result["errorMessage"] = mJsonDecodeBody["errorMessage"].toString();
+  //   }
 
-        if (res.statusCode == 200) {
-          result["MerchantRequestID"] =
-              mJsonDecodeBody["MerchantRequestID"].toString();
-          result["CheckoutRequestID"] =
-              mJsonDecodeBody["CheckoutRequestID"].toString();
-          result["ResponseCode"] = mJsonDecodeBody["ResponseCode"].toString();
-          result["ResponseDescription"] =
-              mJsonDecodeBody["ResponseDescription"].toString();
-          result["CustomerMessage"] =
-              mJsonDecodeBody["CustomerMessage"].toString();
-        } else {
-          result["requestId"] = mJsonDecodeBody["requestId"].toString();
-          result["errorCode"] = mJsonDecodeBody["errorCode"].toString();
-          result["errorMessage"] = mJsonDecodeBody["errorMessage"].toString();
-        }
-      });
-      return result;
-    }).catchError((error) {
-      ///the user should expect anything here, from network errors to
-      ///timeout issues or whatever an http error is!
-
-      result["error"] = error.toString();
-      return result;
-    });
-  }
+  //   return result;
+  // }
 }
